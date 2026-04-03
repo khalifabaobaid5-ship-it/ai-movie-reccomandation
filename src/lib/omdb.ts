@@ -1,5 +1,5 @@
 const OMDB_API_KEY = "3cc48fa";
-const BASE_URL = "http://www.omdbapi.com/";
+const BASE_URL = "https://www.omdbapi.com/";
 
 export interface Movie {
   imdbID: string;
