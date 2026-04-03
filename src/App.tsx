@@ -3,23 +3,48 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AppNav } from "@/components/AppNav";
+import LoginPage from "@/pages/LoginPage";
+import HomePage from "@/pages/HomePage";
+import SearchPage from "@/pages/SearchPage";
+import MovieDetailPage from "@/pages/MovieDetailPage";
+import HistoryPage from "@/pages/HistoryPage";
+import RatingsPage from "@/pages/RatingsPage";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function AppRoutes() {
+  const { user } = useAuth();
+
+  if (!user) return <LoginPage />;
+
+  return (
+    <>
+      <AppNav />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/movie/:id" element={<MovieDetailPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/ratings" element={<RatingsPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
