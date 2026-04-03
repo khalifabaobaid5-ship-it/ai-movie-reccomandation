@@ -22,6 +22,7 @@ export function MovieCard({ movie, userRating }: MovieCardProps) {
           alt={movie.Title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           loading="lazy"
+          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
         />
       </div>
       <div className="p-3 space-y-1">

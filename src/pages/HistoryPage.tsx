@@ -29,7 +29,7 @@ export default function HistoryPage() {
                 onClick={() => navigate(`/movie/${item.imdbID}`)}
                 className="glass-card rounded-lg p-4 flex gap-4 cursor-pointer hover:border-primary/30 transition-colors animate-fade-in"
               >
-                <img src={poster} alt={item.title} className="w-16 h-24 rounded object-cover" loading="lazy" />
+                <img src={poster} alt={item.title} className="w-16 h-24 rounded object-cover" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }} />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-display font-semibold text-foreground truncate">{item.title}</h3>
                   <p className="text-sm text-muted-foreground">{item.year} • {item.genre}</p>

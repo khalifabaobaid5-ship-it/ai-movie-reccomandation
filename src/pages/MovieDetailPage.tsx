@@ -84,6 +84,7 @@ export default function MovieDetailPage() {
             src={poster}
             alt={movie.Title}
             className="w-48 md:w-64 rounded-lg shadow-lg mx-auto md:mx-0"
+            onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
           />
           <div className="flex-1 space-y-4">
             <div>

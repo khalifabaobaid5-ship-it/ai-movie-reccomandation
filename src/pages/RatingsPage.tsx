@@ -35,7 +35,7 @@ export default function RatingsPage() {
                 onClick={() => navigate(`/movie/${r.imdbID}`)}
                 className="glass-card rounded-lg p-4 flex gap-4 cursor-pointer hover:border-primary/30 transition-colors animate-fade-in"
               >
-                <img src={poster} alt={item?.title || r.imdbID} className="w-16 h-24 rounded object-cover" loading="lazy" />
+                <img src={poster} alt={item?.title || r.imdbID} className="w-16 h-24 rounded object-cover" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }} />
                 <div className="flex-1 min-w-0 space-y-1">
                   <h3 className="font-display font-semibold text-foreground truncate">
                     {item?.title || r.imdbID}
