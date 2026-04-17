@@ -3,16 +3,36 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ALL_GENRES } from "@/lib/userStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Film } from "lucide-react";
+import { Film, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [customGenres, setCustomGenres] = useState<string[]>([]);
+  const [customInput, setCustomInput] = useState("");
 
   const toggleGenre = (g: string) =>
     setSelectedGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+
+  const addCustomGenre = () => {
+    const g = customInput.trim();
+    if (!g) return;
+    const exists = [...ALL_GENRES, ...customGenres].some((x) => x.toLowerCase() === g.toLowerCase());
+    if (!exists) {
+      setCustomGenres((prev) => [...prev, g]);
+    }
+    if (!selectedGenres.some((x) => x.toLowerCase() === g.toLowerCase())) {
+      setSelectedGenres((prev) => [...prev, g]);
+    }
+    setCustomInput("");
+  };
+
+  const removeCustomGenre = (g: string) => {
+    setCustomGenres((prev) => prev.filter((x) => x !== g));
+    setSelectedGenres((prev) => prev.filter((x) => x !== g));
+  };
 
   const handleLogin = () => {
     if (username.trim() && selectedGenres.length > 0) {
@@ -61,6 +81,52 @@ export default function LoginPage() {
                   {g}
                 </button>
               ))}
+              {customGenres.map((g) => (
+                <span
+                  key={g}
+                  className={cn(
+                    "inline-flex items-center gap-1 pl-3 pr-1 py-1.5 rounded-full text-sm font-medium transition-all",
+                    selectedGenres.includes(g)
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-muted-foreground"
+                  )}
+                >
+                  <button onClick={() => toggleGenre(g)} className="focus:outline-none">
+                    {g}
+                  </button>
+                  <button
+                    onClick={() => removeCustomGenre(g)}
+                    aria-label={`Remove ${g}`}
+                    className="ml-1 rounded-full p-0.5 hover:bg-background/20"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Input
+                placeholder="Add your own genre"
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCustomGenre();
+                  }
+                }}
+                className="bg-secondary border-border focus:ring-primary"
+              />
+              <Button
+                type="button"
+                onClick={addCustomGenre}
+                disabled={!customInput.trim()}
+                variant="secondary"
+                className="shrink-0"
+              >
+                <Plus size={16} />
+              </Button>
             </div>
           </div>
 
