@@ -9,7 +9,7 @@ import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import SearchPage from "@/pages/SearchPage";
 import MovieDetailPage from "@/pages/MovieDetailPage";
-import HistoryPage from "@/pages/HistoryPage";
+
 import RatingsPage from "@/pages/RatingsPage";
 import NotFound from "@/pages/NotFound";
 
@@ -27,7 +27,7 @@ function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/movie/:id" element={<MovieDetailPage />} />
-        <Route path="/history" element={<HistoryPage />} />
+        
         <Route path="/ratings" element={<RatingsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
