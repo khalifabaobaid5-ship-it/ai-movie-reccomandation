@@ -11,6 +11,8 @@ import SearchPage from "@/pages/SearchPage";
 import MovieDetailPage from "@/pages/MovieDetailPage";
 
 import RatingsPage from "@/pages/RatingsPage";
+import ProfilePage from "@/pages/ProfilePage";
+import WatchLaterPage from "@/pages/WatchLaterPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,8 +29,9 @@ function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/movie/:id" element={<MovieDetailPage />} />
-        
+        <Route path="/watch-later" element={<WatchLaterPage />} />
         <Route path="/ratings" element={<RatingsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

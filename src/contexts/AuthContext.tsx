@@ -1,5 +1,17 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { UserProfile, getUser, saveUser, logout as doLogout, addToWatchHistory, rateMovie, updateFavoriteGenres, WatchHistoryItem } from "@/lib/userStore";
+import {
+  UserProfile,
+  getUser,
+  saveUser,
+  logout as doLogout,
+  addToWatchHistory,
+  rateMovie,
+  updateFavoriteGenres,
+  addToWatchLater,
+  removeFromWatchLater,
+  WatchHistoryItem,
+  WatchLaterItem,
+} from "@/lib/userStore";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -8,6 +20,8 @@ interface AuthContextType {
   addWatch: (item: Omit<WatchHistoryItem, "watchedAt">) => void;
   rate: (imdbID: string, score: number, review: string) => void;
   setGenres: (genres: string[]) => void;
+  addWatchLater: (item: Omit<WatchLaterItem, "addedAt">) => void;
+  removeWatchLater: (imdbID: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -21,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       favoriteGenres: genres,
       ratings: {},
       watchHistory: [],
+      watchLater: [],
     };
     saveUser(profile);
     setUser(profile);
@@ -43,8 +58,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => (prev ? updateFavoriteGenres(prev, genres) : null));
   }, []);
 
+  const addWatchLater = useCallback((item: Omit<WatchLaterItem, "addedAt">) => {
+    setUser((prev) => (prev ? addToWatchLater(prev, item) : null));
+  }, []);
+
+  const removeWatchLater = useCallback((imdbID: string) => {
+    setUser((prev) => (prev ? removeFromWatchLater(prev, imdbID) : null));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, addWatch, rate, setGenres }}>
+    <AuthContext.Provider
+      value={{ user, login, logout, addWatch, rate, setGenres, addWatchLater, removeWatchLater }}
+    >
       {children}
     </AuthContext.Provider>
   );
