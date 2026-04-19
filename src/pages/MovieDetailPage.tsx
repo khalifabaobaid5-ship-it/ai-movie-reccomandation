@@ -73,7 +73,17 @@ export default function MovieDetailPage() {
   }
 
   const poster = movie.Poster !== "N/A" ? movie.Poster : "/placeholder.svg";
-  const googleLink = `https://www.google.com/search?q=${encodeURIComponent(movie.Title + " " + movie.Year + " movie")}`;
+  const q = encodeURIComponent(`${movie.Title} ${movie.Year}`);
+  const externalLinks = [
+    { label: "IMDb", url: `https://www.imdb.com/title/${movie.imdbID}/` },
+    { label: "Google", url: `https://www.google.com/search?q=${q}+movie` },
+    { label: "Trailer", url: `https://www.youtube.com/results?search_query=${q}+trailer` },
+  ];
+
+  const openExternal = (url: string) => {
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    if (!w) window.top!.location.href = url;
+  };
 
   return (
     <div className="pt-20 pb-10 container space-y-10">
@@ -133,11 +143,20 @@ export default function MovieDetailPage() {
               )}
             </div>
 
-            <a href={googleLink} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="gap-2 border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
-                <ExternalLink size={14} /> View on Google
-              </Button>
-            </a>
+            <div className="flex flex-wrap gap-2">
+              {externalLinks.map((l) => (
+                <Button
+                  key={l.label}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openExternal(l.url)}
+                  className="gap-2 border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                >
+                  <ExternalLink size={14} /> {l.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
