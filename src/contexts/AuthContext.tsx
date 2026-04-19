@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { UserProfile, getUser, saveUser, logout as doLogout, addToWatchHistory, rateMovie, WatchHistoryItem } from "@/lib/userStore";
+import { UserProfile, getUser, saveUser, logout as doLogout, addToWatchHistory, rateMovie, updateFavoriteGenres, WatchHistoryItem } from "@/lib/userStore";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -7,6 +7,7 @@ interface AuthContextType {
   logout: () => void;
   addWatch: (item: Omit<WatchHistoryItem, "watchedAt">) => void;
   rate: (imdbID: string, score: number, review: string) => void;
+  setGenres: (genres: string[]) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -38,8 +39,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => (prev ? rateMovie(prev, imdbID, score, review) : null));
   }, []);
 
+  const setGenres = useCallback((genres: string[]) => {
+    setUser((prev) => (prev ? updateFavoriteGenres(prev, genres) : null));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, addWatch, rate }}>
+    <AuthContext.Provider value={{ user, login, logout, addWatch, rate, setGenres }}>
       {children}
     </AuthContext.Provider>
   );
