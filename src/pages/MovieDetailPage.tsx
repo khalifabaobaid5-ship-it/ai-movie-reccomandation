@@ -133,11 +133,20 @@ export default function MovieDetailPage() {
               )}
             </div>
 
-            <a href={googleLink} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="gap-2 border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
-                <ExternalLink size={14} /> View on Google
-              </Button>
-            </a>
+            <div className="flex flex-wrap gap-2">
+              {externalLinks.map((l) => (
+                <Button
+                  key={l.label}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openExternal(l.url)}
+                  className="gap-2 border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                >
+                  <ExternalLink size={14} /> {l.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
