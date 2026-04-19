@@ -15,18 +15,25 @@ export default function HomePage() {
     const load = async () => {
       setLoading(true);
       try {
-        // Get recommendations based on favorite genres
+        // Recommendations: pull from up to 5 favorite genres, 2 pages each
         const genreResults = await Promise.all(
-          user.favoriteGenres.slice(0, 3).map((g) => searchByGenre(g))
+          user.favoriteGenres.slice(0, 5).flatMap((g) => [
+            searchByGenre(g, 1),
+            searchByGenre(g, 2),
+          ])
         );
-        const allMovies = genreResults.flatMap((r) => r.Search || []);
-        // Deduplicate and pick 5
-        const unique = Array.from(new Map(allMovies.map((m) => [m.imdbID, m])).values());
-        setRecommendations(unique.slice(0, 5));
+        const allRecs = genreResults.flatMap((r) => r.Search || []);
+        const uniqueRecs = Array.from(new Map(allRecs.map((m) => [m.imdbID, m])).values());
+        setRecommendations(uniqueRecs.slice(0, 20));
 
-        // Get trending (popular search)
-        const trendRes = await searchByGenre("Adventure");
-        setTrending((trendRes.Search || []).slice(0, 8));
+        // Trending: combine multiple popular genres for variety
+        const trendingGenres = ["Adventure", "Action", "Drama"];
+        const trendResults = await Promise.all(
+          trendingGenres.flatMap((g) => [searchByGenre(g, 1), searchByGenre(g, 2)])
+        );
+        const allTrend = trendResults.flatMap((r) => r.Search || []);
+        const uniqueTrend = Array.from(new Map(allTrend.map((m) => [m.imdbID, m])).values());
+        setTrending(uniqueTrend.slice(0, 24));
       } catch (e) {
         console.error(e);
       }
@@ -48,7 +55,7 @@ export default function HomePage() {
         <p className="text-sm text-muted-foreground">Based on your favorite genres: {user.favoriteGenres.join(", ")}</p>
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(10)].map((_, i) => (
               <div key={i} className="aspect-[2/3] bg-secondary rounded-lg animate-pulse" />
             ))}
           </div>
@@ -68,13 +75,13 @@ export default function HomePage() {
           <h2 className="text-2xl font-display font-bold text-foreground">Popular Movies</h2>
         </div>
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {[...Array(10)].map((_, i) => (
               <div key={i} className="aspect-[2/3] bg-secondary rounded-lg animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             {trending.map((m) => (
               <MovieCard key={m.imdbID} movie={m} userRating={user.ratings[m.imdbID]?.score} />
             ))}
