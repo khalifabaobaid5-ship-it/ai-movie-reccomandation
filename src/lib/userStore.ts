@@ -15,18 +15,34 @@ export interface WatchHistoryItem {
   rating?: number;
 }
 
+export interface WatchLaterItem {
+  imdbID: string;
+  title: string;
+  poster: string;
+  year: string;
+  genre?: string;
+  addedAt: string;
+}
+
 export interface UserProfile {
   username: string;
   favoriteGenres: string[];
   ratings: Record<string, UserRating>;
   watchHistory: WatchHistoryItem[];
+  watchLater: WatchLaterItem[];
 }
 
 const STORAGE_KEY = "cineai_user";
 
 export function getUser(): UserProfile | null {
   const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : null;
+  if (!data) return null;
+  const parsed = JSON.parse(data) as UserProfile;
+  // Backfill for older saved profiles
+  if (!parsed.watchLater) parsed.watchLater = [];
+  if (!parsed.watchHistory) parsed.watchHistory = [];
+  if (!parsed.ratings) parsed.ratings = {};
+  return parsed;
 }
 
 export function saveUser(user: UserProfile) {
@@ -62,6 +78,22 @@ export function rateMovie(user: UserProfile, imdbID: string, score: number, revi
 
 export function updateFavoriteGenres(user: UserProfile, genres: string[]): UserProfile {
   const updated = { ...user, favoriteGenres: genres };
+  saveUser(updated);
+  return updated;
+}
+
+export function addToWatchLater(user: UserProfile, item: Omit<WatchLaterItem, "addedAt">): UserProfile {
+  if (user.watchLater.some((w) => w.imdbID === item.imdbID)) return user;
+  const updated = {
+    ...user,
+    watchLater: [{ ...item, addedAt: new Date().toISOString() }, ...user.watchLater],
+  };
+  saveUser(updated);
+  return updated;
+}
+
+export function removeFromWatchLater(user: UserProfile, imdbID: string): UserProfile {
+  const updated = { ...user, watchLater: user.watchLater.filter((w) => w.imdbID !== imdbID) };
   saveUser(updated);
   return updated;
 }

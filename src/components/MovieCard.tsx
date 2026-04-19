@@ -1,6 +1,8 @@
 import { Movie } from "@/lib/omdb";
 import { useNavigate } from "react-router-dom";
-import { Star } from "lucide-react";
+import { Star, Bookmark, BookmarkCheck } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface MovieCardProps {
   movie: Movie;
@@ -9,13 +11,39 @@ interface MovieCardProps {
 
 export function MovieCard({ movie, userRating }: MovieCardProps) {
   const navigate = useNavigate();
+  const { user, addWatchLater, removeWatchLater } = useAuth();
   const poster = movie.Poster !== "N/A" ? movie.Poster : "/placeholder.svg";
+  const inWatchLater = !!user?.watchLater.some((w) => w.imdbID === movie.imdbID);
+
+  const toggleWatchLater = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (inWatchLater) {
+      removeWatchLater(movie.imdbID);
+      toast("Removed from Watch Later");
+    } else {
+      addWatchLater({
+        imdbID: movie.imdbID,
+        title: movie.Title,
+        poster: movie.Poster,
+        year: movie.Year,
+        genre: movie.Genre,
+      });
+      toast.success("Added to Watch Later");
+    }
+  };
 
   return (
     <div
       onClick={() => navigate(`/movie/${movie.imdbID}`)}
-      className="group cursor-pointer rounded-lg overflow-hidden bg-card card-glow animate-fade-in"
+      className="group relative cursor-pointer rounded-lg overflow-hidden bg-card card-glow animate-fade-in"
     >
+      <button
+        onClick={toggleWatchLater}
+        aria-label={inWatchLater ? "Remove from Watch Later" : "Add to Watch Later"}
+        className="absolute top-2 right-2 z-10 rounded-full bg-background/70 backdrop-blur p-2 text-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground"
+      >
+        {inWatchLater ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+      </button>
       <div className="aspect-[2/3] overflow-hidden">
         <img
           src={poster}
