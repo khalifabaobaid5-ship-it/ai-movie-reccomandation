@@ -60,6 +60,12 @@ export function rateMovie(user: UserProfile, imdbID: string, score: number, revi
   return updated;
 }
 
+export function updateFavoriteGenres(user: UserProfile, genres: string[]): UserProfile {
+  const updated = { ...user, favoriteGenres: genres };
+  saveUser(updated);
+  return updated;
+}
+
 export const ALL_GENRES = [
   "Action", "Comedy", "Drama", "Horror", "Sci-Fi",
   "Romance", "Thriller", "Animation", "Documentary", "Adventure",
