@@ -24,7 +24,13 @@ export default function HomePage() {
         );
         const allRecs = genreResults.flatMap((r) => r.Search || []);
         const uniqueRecs = Array.from(new Map(allRecs.map((m) => [m.imdbID, m])).values());
-        setRecommendations(uniqueRecs.slice(0, 20));
+        // Prefer movies that have a poster image
+        const sortedRecs = uniqueRecs.sort((a, b) => {
+          const aHas = a.Poster && a.Poster !== "N/A" ? 0 : 1;
+          const bHas = b.Poster && b.Poster !== "N/A" ? 0 : 1;
+          return aHas - bHas;
+        });
+        setRecommendations(sortedRecs.slice(0, 20));
 
         // Trending: combine multiple popular genres for variety
         const trendingGenres = ["Adventure", "Action", "Drama"];
@@ -33,7 +39,12 @@ export default function HomePage() {
         );
         const allTrend = trendResults.flatMap((r) => r.Search || []);
         const uniqueTrend = Array.from(new Map(allTrend.map((m) => [m.imdbID, m])).values());
-        setTrending(uniqueTrend.slice(0, 24));
+        const sortedTrend = uniqueTrend.sort((a, b) => {
+          const aHas = a.Poster && a.Poster !== "N/A" ? 0 : 1;
+          const bHas = b.Poster && b.Poster !== "N/A" ? 0 : 1;
+          return aHas - bHas;
+        });
+        setTrending(sortedTrend.slice(0, 24));
       } catch (e) {
         console.error(e);
       }
