@@ -46,6 +46,23 @@ export default function HomePage() {
           return aHas - bHas;
         });
         setTrending(sortedTrend.slice(0, 24));
+
+        // Latest releases: pull from the past few years and sort by year desc
+        const currentYear = new Date().getFullYear();
+        const years = [currentYear, currentYear - 1, currentYear - 2];
+        const latestResults = await Promise.all(
+          years.flatMap((y) => [searchByYear(y, 1), searchByYear(y, 2)])
+        );
+        const allLatest = latestResults.flatMap((r) => r.Search || []);
+        const uniqueLatest = Array.from(new Map(allLatest.map((m) => [m.imdbID, m])).values());
+        const sortedLatest = uniqueLatest
+          .filter((m) => m.Poster && m.Poster !== "N/A")
+          .sort((a, b) => {
+            const ay = parseInt(a.Year, 10) || 0;
+            const by = parseInt(b.Year, 10) || 0;
+            return by - ay;
+          });
+        setLatest(sortedLatest.slice(0, 20));
       } catch (e) {
         console.error(e);
       }
