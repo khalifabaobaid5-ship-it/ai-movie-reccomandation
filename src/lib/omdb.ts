@@ -24,9 +24,17 @@ export interface SearchResult {
   Error?: string;
 }
 
-export async function searchMovies(query: string, page = 1): Promise<SearchResult> {
-  const res = await fetch(`${BASE_URL}?apikey=${OMDB_API_KEY}&s=${encodeURIComponent(query)}&page=${page}`);
+export async function searchMovies(query: string, page = 1, year?: number): Promise<SearchResult> {
+  const yParam = year ? `&y=${year}` : "";
+  const res = await fetch(`${BASE_URL}?apikey=${OMDB_API_KEY}&s=${encodeURIComponent(query)}&page=${page}${yParam}&type=movie`);
   return res.json();
+}
+
+export async function searchByYear(year: number, page = 1): Promise<SearchResult> {
+  // Broad term + year filter to surface recent titles
+  const terms = ["movie", "the", "love", "man"];
+  const term = terms[(page - 1) % terms.length];
+  return searchMovies(term, page, year);
 }
 
 export async function getMovieById(id: string): Promise<Movie & { Response: string }> {

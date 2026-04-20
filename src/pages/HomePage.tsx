@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { searchByGenre, Movie } from "@/lib/omdb";
+import { searchByGenre, searchByYear, Movie } from "@/lib/omdb";
 import { MovieCard } from "@/components/MovieCard";
-import { Sparkles, TrendingUp } from "lucide-react";
+import { Sparkles, TrendingUp, CalendarClock } from "lucide-react";
 
 export default function HomePage() {
   const { user } = useAuth();
   const [recommendations, setRecommendations] = useState<Movie[]>([]);
   const [trending, setTrending] = useState<Movie[]>([]);
+  const [latest, setLatest] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +46,23 @@ export default function HomePage() {
           return aHas - bHas;
         });
         setTrending(sortedTrend.slice(0, 24));
+
+        // Latest releases: pull from the past few years and sort by year desc
+        const currentYear = new Date().getFullYear();
+        const years = [currentYear, currentYear - 1, currentYear - 2];
+        const latestResults = await Promise.all(
+          years.flatMap((y) => [searchByYear(y, 1), searchByYear(y, 2)])
+        );
+        const allLatest = latestResults.flatMap((r) => r.Search || []);
+        const uniqueLatest = Array.from(new Map(allLatest.map((m) => [m.imdbID, m])).values());
+        const sortedLatest = uniqueLatest
+          .filter((m) => m.Poster && m.Poster !== "N/A")
+          .sort((a, b) => {
+            const ay = parseInt(a.Year, 10) || 0;
+            const by = parseInt(b.Year, 10) || 0;
+            return by - ay;
+          });
+        setLatest(sortedLatest.slice(0, 20));
       } catch (e) {
         console.error(e);
       }
@@ -73,6 +91,28 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             {recommendations.map((m) => (
+              <MovieCard key={m.imdbID} movie={m} userRating={user.ratings[m.imdbID]?.score} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Latest Releases */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="text-primary" size={22} />
+          <h2 className="text-2xl font-display font-bold text-foreground">Latest Releases</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">Newest movies by release year</p>
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="aspect-[2/3] bg-secondary rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {latest.map((m) => (
               <MovieCard key={m.imdbID} movie={m} userRating={user.ratings[m.imdbID]?.score} />
             ))}
           </div>
