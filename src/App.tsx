@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppNav } from "@/components/AppNav";
+import { WatchLaterPrompt } from "@/components/WatchLaterPrompt";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import SearchPage from "@/pages/SearchPage";
@@ -25,6 +26,7 @@ function AppRoutes() {
   return (
     <>
       <AppNav />
+      <WatchLaterPrompt />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
