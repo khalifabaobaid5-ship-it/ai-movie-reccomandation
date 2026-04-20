@@ -46,14 +46,35 @@ export default function SearchPage() {
     setLoading(true);
 
     // Build initial result set from API.
-    // If there's a query, use it. Otherwise seed from filters: prefer genre,
-    // then a broad term optionally constrained by yearFrom.
     let initial: Movie[] = [];
+
     if (hasQuery) {
-      const data = await searchMovies(query);
-      initial = data.Search || [];
+      // For Actor/Director: OMDB has no person index, so we widen the candidate
+      // pool by pulling the typed name as a title AND extra pages of broad
+      // seeds (optionally constrained by genre). We then strictly filter
+      // hydrated results by Actors/Director below.
+      if (searchField === "actor" || searchField === "director") {
+        const seeds: Promise<{ Search?: Movie[] }>[] = [
+          searchMovies(query, 1),
+          searchMovies(query, 2),
+        ];
+        if (genreFilter !== "all") {
+          seeds.push(searchByGenre(genreFilter, 1), searchByGenre(genreFilter, 2), searchByGenre(genreFilter, 3));
+        } else {
+          // Generic broad seeds to expand the pool
+          seeds.push(
+            searchMovies("the", 1, yearFrom ? parseInt(yearFrom) : undefined),
+            searchMovies("movie", 1, yearFrom ? parseInt(yearFrom) : undefined),
+            searchMovies("man", 1, yearFrom ? parseInt(yearFrom) : undefined),
+          );
+        }
+        const seedResults = await Promise.all(seeds);
+        initial = seedResults.flatMap((r) => r.Search || []);
+      } else {
+        const data = await searchMovies(query);
+        initial = data.Search || [];
+      }
     } else if (genreFilter !== "all") {
-      // Pull 2 pages for a fuller result set when only filters are used
       const [p1, p2] = await Promise.all([searchByGenre(genreFilter, 1), searchByGenre(genreFilter, 2)]);
       initial = [...(p1.Search || []), ...(p2.Search || [])];
     } else {
@@ -68,9 +89,14 @@ export default function SearchPage() {
     // De-dupe
     initial = Array.from(new Map(initial.map((m) => [m.imdbID, m])).values());
 
-    // Limit how many we hydrate to avoid excessive requests
+    // For person searches we need a bigger hydration pool because most
+    // candidates won't actually feature the person.
     const limit = Math.min(parseInt(resultLimit) || 20, 50);
-    initial = initial.slice(0, limit);
+    const hydrationCap =
+      hasQuery && (searchField === "actor" || searchField === "director")
+        ? Math.min(initial.length, 60)
+        : limit;
+    initial = initial.slice(0, hydrationCap);
 
     // Hydrate with full details for filtering
     const detailed = await Promise.all(
@@ -82,7 +108,7 @@ export default function SearchPage() {
 
     // Apply field-specific matching only when there's a query
     const q = query.toLowerCase();
-    const fieldFiltered = hasQuery
+    let fieldFiltered = hasQuery
       ? detailed.filter((m) => {
           if (searchField === "title") return m.Title?.toLowerCase().includes(q);
           if (searchField === "actor") return m.Actors?.toLowerCase().includes(q);
@@ -91,6 +117,9 @@ export default function SearchPage() {
           return true;
         })
       : detailed;
+
+    // Cap final results to the requested limit
+    fieldFiltered = fieldFiltered.slice(0, limit);
 
     setResults(fieldFiltered);
     setLoading(false);
