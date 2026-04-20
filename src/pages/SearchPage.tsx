@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { searchMovies, getMovieById, Movie } from "@/lib/omdb";
+import { searchMovies, getMovieById, searchByGenre, Movie } from "@/lib/omdb";
 import { MovieCard } from "@/components/MovieCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 const SEARCH_FIELDS = [
   { value: "title", label: "Title" },
@@ -33,13 +34,39 @@ export default function SearchPage() {
   const [resultLimit, setResultLimit] = useState("20");
 
   const handleSearch = async () => {
-    if (!query.trim()) return;
+    const hasQuery = query.trim().length > 0;
+    const hasFilter =
+      genreFilter !== "all" || yearFrom || yearTo || minRating || resultLimit !== "20";
+
+    if (!hasQuery && !hasFilter) {
+      toast.error("Enter a search term or pick at least one filter");
+      return;
+    }
+
     setLoading(true);
 
-    // OMDB only supports title search, so for other fields we search broadly then filter
-    const searchTerm = query;
-    const data = await searchMovies(searchTerm);
-    let initial = data.Search || [];
+    // Build initial result set from API.
+    // If there's a query, use it. Otherwise seed from filters: prefer genre,
+    // then a broad term optionally constrained by yearFrom.
+    let initial: Movie[] = [];
+    if (hasQuery) {
+      const data = await searchMovies(query);
+      initial = data.Search || [];
+    } else if (genreFilter !== "all") {
+      // Pull 2 pages for a fuller result set when only filters are used
+      const [p1, p2] = await Promise.all([searchByGenre(genreFilter, 1), searchByGenre(genreFilter, 2)]);
+      initial = [...(p1.Search || []), ...(p2.Search || [])];
+    } else {
+      const seedYear = yearFrom ? parseInt(yearFrom) : undefined;
+      const [p1, p2] = await Promise.all([
+        searchMovies("movie", 1, seedYear),
+        searchMovies("the", 1, seedYear),
+      ]);
+      initial = [...(p1.Search || []), ...(p2.Search || [])];
+    }
+
+    // De-dupe
+    initial = Array.from(new Map(initial.map((m) => [m.imdbID, m])).values());
 
     // Limit how many we hydrate to avoid excessive requests
     const limit = Math.min(parseInt(resultLimit) || 20, 50);
@@ -53,15 +80,17 @@ export default function SearchPage() {
       })
     );
 
-    // Apply field-specific matching
+    // Apply field-specific matching only when there's a query
     const q = query.toLowerCase();
-    const fieldFiltered = detailed.filter((m) => {
-      if (searchField === "title") return m.Title?.toLowerCase().includes(q);
-      if (searchField === "actor") return m.Actors?.toLowerCase().includes(q);
-      if (searchField === "director") return m.Director?.toLowerCase().includes(q);
-      if (searchField === "genre") return m.Genre?.toLowerCase().includes(q);
-      return true;
-    });
+    const fieldFiltered = hasQuery
+      ? detailed.filter((m) => {
+          if (searchField === "title") return m.Title?.toLowerCase().includes(q);
+          if (searchField === "actor") return m.Actors?.toLowerCase().includes(q);
+          if (searchField === "director") return m.Director?.toLowerCase().includes(q);
+          if (searchField === "genre") return m.Genre?.toLowerCase().includes(q);
+          return true;
+        })
+      : detailed;
 
     setResults(fieldFiltered);
     setLoading(false);
@@ -212,8 +241,8 @@ export default function SearchPage() {
         </>
       )}
 
-      {!loading && results.length === 0 && query && (
-        <p className="text-center text-muted-foreground py-10">No movies found. Try a different search.</p>
+      {!loading && results.length === 0 && (query || genreFilter !== "all" || yearFrom || yearTo || minRating) && (
+        <p className="text-center text-muted-foreground py-10">No movies found. Try different filters or a search term.</p>
       )}
       {!loading && results.length > 0 && filteredResults.length === 0 && (
         <p className="text-center text-muted-foreground py-10">No results match your filters.</p>
