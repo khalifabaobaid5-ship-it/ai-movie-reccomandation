@@ -51,9 +51,15 @@ export default function SearchPage() {
       seedPromises.push(searchMovies(fields.title, 1, seedYear));
       seedPromises.push(searchMovies(fields.title, 2, seedYear));
     }
-    if (fields.actor) {
-      seedPromises.push(searchMovies(fields.actor, 1, seedYear));
-      seedPromises.push(searchMovies(fields.actor, 2, seedYear));
+    const actorList = fields.actor
+      .split(",")
+      .map((a) => a.trim())
+      .filter((a) => a.length > 0);
+    if (actorList.length > 0) {
+      actorList.forEach((name) => {
+        seedPromises.push(searchMovies(name, 1, seedYear));
+        seedPromises.push(searchMovies(name, 2, seedYear));
+      });
     }
     if (fields.director) {
       seedPromises.push(searchMovies(fields.director, 1, seedYear));
@@ -95,7 +101,7 @@ export default function SearchPage() {
     // OR matching: a movie matches if ANY filled field matches it
     const matchers = {
       title: fields.title.toLowerCase(),
-      actor: fields.actor.toLowerCase(),
+      actors: actorList.map((a) => a.toLowerCase()),
       director: fields.director.toLowerCase(),
       genre: fields.genre.toLowerCase(),
     };
@@ -103,7 +109,10 @@ export default function SearchPage() {
     let fieldFiltered = hasAnyQuery
       ? detailed.filter((m) => {
           if (matchers.title && m.Title?.toLowerCase().includes(matchers.title)) return true;
-          if (matchers.actor && m.Actors?.toLowerCase().includes(matchers.actor)) return true;
+          if (matchers.actors.length > 0) {
+            const a = m.Actors?.toLowerCase() || "";
+            if (matchers.actors.some((name) => a.includes(name))) return true;
+          }
           if (matchers.director && m.Director?.toLowerCase().includes(matchers.director)) return true;
           if (matchers.genre && m.Genre?.toLowerCase().includes(matchers.genre)) return true;
           return false;
@@ -167,9 +176,9 @@ export default function SearchPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Actor</Label>
+            <Label className="text-xs text-muted-foreground">Actor (comma-separated for multiple)</Label>
             <Input
-              placeholder="e.g. Tom Hanks"
+              placeholder="e.g. Tom Hanks, Meg Ryan"
               value={actorQuery}
               onChange={(e) => setActorQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
