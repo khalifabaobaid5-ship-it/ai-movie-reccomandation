@@ -143,13 +143,14 @@ export default function MovieDetailPage() {
               {externalLinks.map((l) => (
                 <Button
                   key={l.label}
-                  type="button"
+                  asChild
                   variant="outline"
                   size="sm"
-                  onClick={() => openExternal(l.url)}
                   className="gap-2 border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
                 >
-                  <ExternalLink size={14} /> {l.label}
+                  <a href={l.url} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink size={14} /> {l.label}
+                  </a>
                 </Button>
               ))}
             </div>
