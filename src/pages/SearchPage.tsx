@@ -176,9 +176,9 @@ export default function SearchPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Actor</Label>
+            <Label className="text-xs text-muted-foreground">Actor (comma-separated for multiple)</Label>
             <Input
-              placeholder="e.g. Tom Hanks"
+              placeholder="e.g. Tom Hanks, Meg Ryan"
               value={actorQuery}
               onChange={(e) => setActorQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
