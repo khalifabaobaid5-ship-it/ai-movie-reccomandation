@@ -51,9 +51,15 @@ export default function SearchPage() {
       seedPromises.push(searchMovies(fields.title, 1, seedYear));
       seedPromises.push(searchMovies(fields.title, 2, seedYear));
     }
-    if (fields.actor) {
-      seedPromises.push(searchMovies(fields.actor, 1, seedYear));
-      seedPromises.push(searchMovies(fields.actor, 2, seedYear));
+    const actorList = fields.actor
+      .split(",")
+      .map((a) => a.trim())
+      .filter((a) => a.length > 0);
+    if (actorList.length > 0) {
+      actorList.forEach((name) => {
+        seedPromises.push(searchMovies(name, 1, seedYear));
+        seedPromises.push(searchMovies(name, 2, seedYear));
+      });
     }
     if (fields.director) {
       seedPromises.push(searchMovies(fields.director, 1, seedYear));
