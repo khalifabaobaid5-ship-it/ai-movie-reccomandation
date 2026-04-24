@@ -47,7 +47,8 @@ export default function LoginPage() {
   const handleSignIn = () => {
     if (!signInUsername.trim() || !signInPassword) return;
     const result = signIn(signInUsername.trim(), signInPassword);
-    if (result.ok) {
+    if (result.ok === true) {
+      sessionStorage.removeItem("cineai_watchlater_prompted");
       toast.success(`Welcome back, ${result.profile.username}!`);
     } else {
       toast.error(result.error);
@@ -57,7 +58,8 @@ export default function LoginPage() {
   const handleSignUp = () => {
     if (!username.trim() || !password || selectedGenres.length === 0) return;
     const result = signUp(username.trim(), password, selectedGenres);
-    if (result.ok) {
+    if (result.ok === true) {
+      sessionStorage.removeItem("cineai_watchlater_prompted");
       toast.success(`Account created. Welcome, ${result.profile.username}!`);
     } else {
       toast.error(result.error);
