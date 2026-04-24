@@ -73,17 +73,13 @@ export default function MovieDetailPage() {
   }
 
   const poster = movie.Poster !== "N/A" ? movie.Poster : "/placeholder.svg";
-  const q = encodeURIComponent(`${movie.Title} ${movie.Year}`);
+  const googleQ = `${movie.Title} ${movie.Year} mov`.trim().split(/\s+/).join("+");
+  const ytQ = `${movie.Title} ${movie.Year} trailer`.trim().split(/\s+/).join("+");
   const externalLinks = [
     { label: "IMDb", url: `https://www.imdb.com/title/${movie.imdbID}/` },
-    { label: "Google", url: `https://www.google.com/search?q=${q}+movie` },
-    { label: "Trailer", url: `https://www.youtube.com/results?search_query=${q}+trailer` },
+    { label: "Google", url: `https://www.google.com/search?q=${googleQ}` },
+    { label: "Trailer", url: `https://www.youtube.com/results?search_query=${ytQ}` },
   ];
-
-  const openExternal = (url: string) => {
-    const w = window.open(url, "_blank", "noopener,noreferrer");
-    if (!w) window.top!.location.href = url;
-  };
 
   return (
     <div className="pt-20 pb-10 container space-y-10">
