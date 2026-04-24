@@ -32,25 +32,106 @@ export interface UserProfile {
   watchLater: WatchLaterItem[];
 }
 
-const STORAGE_KEY = "cineai_user";
+interface StoredAccount {
+  password: string;
+  profile: UserProfile;
+}
+
+const SESSION_KEY = "cineai_user";
+const ACCOUNTS_KEY = "cineai_accounts";
+
+function normalizeKey(username: string) {
+  return username.trim().toLowerCase();
+}
+
+function readAccounts(): Record<string, StoredAccount> {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<string, StoredAccount>;
+  } catch {
+    return {};
+  }
+}
+
+function writeAccounts(accounts: Record<string, StoredAccount>) {
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+}
+
+function backfill(profile: UserProfile): UserProfile {
+  if (!profile.watchLater) profile.watchLater = [];
+  if (!profile.watchHistory) profile.watchHistory = [];
+  if (!profile.ratings) profile.ratings = {};
+  if (!profile.favoriteGenres) profile.favoriteGenres = [];
+  return profile;
+}
 
 export function getUser(): UserProfile | null {
-  const data = localStorage.getItem(STORAGE_KEY);
+  const data = localStorage.getItem(SESSION_KEY);
   if (!data) return null;
-  const parsed = JSON.parse(data) as UserProfile;
-  // Backfill for older saved profiles
-  if (!parsed.watchLater) parsed.watchLater = [];
-  if (!parsed.watchHistory) parsed.watchHistory = [];
-  if (!parsed.ratings) parsed.ratings = {};
-  return parsed;
+  try {
+    return backfill(JSON.parse(data) as UserProfile);
+  } catch {
+    return null;
+  }
 }
 
 export function saveUser(user: UserProfile) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  // Persist into accounts store too (preserve password)
+  const accounts = readAccounts();
+  const key = normalizeKey(user.username);
+  const existing = accounts[key];
+  if (existing) {
+    accounts[key] = { password: existing.password, profile: user };
+    writeAccounts(accounts);
+  }
 }
 
 export function logout() {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(SESSION_KEY);
+}
+
+export function accountExists(username: string): boolean {
+  const accounts = readAccounts();
+  return Boolean(accounts[normalizeKey(username)]);
+}
+
+export type AuthResult =
+  | { ok: true; profile: UserProfile }
+  | { ok: false; error: string };
+
+export function signUp(username: string, password: string, genres: string[]): AuthResult {
+  const name = username.trim();
+  if (!name) return { ok: false, error: "Username is required" };
+  if (!password) return { ok: false, error: "Password is required" };
+  const accounts = readAccounts();
+  const key = normalizeKey(name);
+  if (accounts[key]) {
+    return { ok: false, error: "An account with that username already exists. Try signing in." };
+  }
+  const profile: UserProfile = {
+    username: name,
+    favoriteGenres: genres,
+    ratings: {},
+    watchHistory: [],
+    watchLater: [],
+  };
+  accounts[key] = { password, profile };
+  writeAccounts(accounts);
+  localStorage.setItem(SESSION_KEY, JSON.stringify(profile));
+  return { ok: true, profile };
+}
+
+export function signIn(username: string, password: string): AuthResult {
+  const accounts = readAccounts();
+  const key = normalizeKey(username);
+  const account = accounts[key];
+  if (!account) return { ok: false, error: "No account found with that username." };
+  if (account.password !== password) return { ok: false, error: "Incorrect password." };
+  const profile = backfill(account.profile);
+  localStorage.setItem(SESSION_KEY, JSON.stringify(profile));
+  return { ok: true, profile };
 }
 
 export function addToWatchHistory(user: UserProfile, item: Omit<WatchHistoryItem, "watchedAt">): UserProfile {
