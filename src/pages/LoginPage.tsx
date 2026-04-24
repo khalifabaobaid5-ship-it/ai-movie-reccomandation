@@ -47,20 +47,20 @@ export default function LoginPage() {
   const handleSignIn = () => {
     if (!signInUsername.trim() || !signInPassword) return;
     const result = signIn(signInUsername.trim(), signInPassword);
-    if (!result.ok) {
-      toast.error(result.error);
-    } else {
+    if (result.ok) {
       toast.success(`Welcome back, ${result.profile.username}!`);
+    } else {
+      toast.error(result.error);
     }
   };
 
   const handleSignUp = () => {
     if (!username.trim() || !password || selectedGenres.length === 0) return;
     const result = signUp(username.trim(), password, selectedGenres);
-    if (!result.ok) {
-      toast.error(result.error);
-    } else {
+    if (result.ok) {
       toast.success(`Account created. Welcome, ${result.profile.username}!`);
+    } else {
+      toast.error(result.error);
     }
   };
 
