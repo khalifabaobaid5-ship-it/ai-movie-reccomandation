@@ -9,96 +9,82 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-const SEARCH_FIELDS = [
-  { value: "title", label: "Title" },
-  { value: "actor", label: "Actor" },
-  { value: "director", label: "Director" },
-  { value: "genre", label: "Genre" },
-];
-
-const GENRES = ["Action", "Comedy", "Drama", "Horror", "Sci-Fi", "Romance", "Thriller", "Animation", "Documentary", "Adventure"];
-
 export default function SearchPage() {
   const { user } = useAuth();
-  const [query, setQuery] = useState("");
-  const [searchField, setSearchField] = useState("title");
+  const [titleQuery, setTitleQuery] = useState("");
+  const [actorQuery, setActorQuery] = useState("");
+  const [directorQuery, setDirectorQuery] = useState("");
+  const [genreQuery, setGenreQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   // Filters
-  const [genreFilter, setGenreFilter] = useState("all");
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
   const [minRating, setMinRating] = useState("");
   const [resultLimit, setResultLimit] = useState("20");
 
   const handleSearch = async () => {
-    const hasQuery = query.trim().length > 0;
-    const hasFilter =
-      genreFilter !== "all" || yearFrom || yearTo || minRating || resultLimit !== "20";
+    const fields = {
+      title: titleQuery.trim(),
+      actor: actorQuery.trim(),
+      director: directorQuery.trim(),
+      genre: genreQuery.trim(),
+    };
+    const filledFields = Object.entries(fields).filter(([, v]) => v.length > 0);
+    const hasAnyQuery = filledFields.length > 0;
+    const hasFilter = yearFrom || yearTo || minRating || resultLimit !== "20";
 
-    if (!hasQuery && !hasFilter) {
-      toast.error("Enter a search term or pick at least one filter");
+    if (!hasAnyQuery && !hasFilter) {
+      toast.error("Fill at least one search field or filter");
       return;
     }
 
     setLoading(true);
 
-    // Build initial result set from API.
-    let initial: Movie[] = [];
+    // Seed candidate pool from each filled field
+    const seedPromises: Promise<{ Search?: Movie[] }>[] = [];
+    const seedYear = yearFrom ? parseInt(yearFrom) : undefined;
 
-    if (hasQuery) {
-      // For Actor/Director: OMDB has no person index, so we widen the candidate
-      // pool by pulling the typed name as a title AND extra pages of broad
-      // seeds (optionally constrained by genre). We then strictly filter
-      // hydrated results by Actors/Director below.
-      if (searchField === "actor" || searchField === "director") {
-        const seeds: Promise<{ Search?: Movie[] }>[] = [
-          searchMovies(query, 1),
-          searchMovies(query, 2),
-        ];
-        if (genreFilter !== "all") {
-          seeds.push(searchByGenre(genreFilter, 1), searchByGenre(genreFilter, 2), searchByGenre(genreFilter, 3));
-        } else {
-          // Generic broad seeds to expand the pool
-          seeds.push(
-            searchMovies("the", 1, yearFrom ? parseInt(yearFrom) : undefined),
-            searchMovies("movie", 1, yearFrom ? parseInt(yearFrom) : undefined),
-            searchMovies("man", 1, yearFrom ? parseInt(yearFrom) : undefined),
-          );
-        }
-        const seedResults = await Promise.all(seeds);
-        initial = seedResults.flatMap((r) => r.Search || []);
-      } else {
-        const data = await searchMovies(query);
-        initial = data.Search || [];
-      }
-    } else if (genreFilter !== "all") {
-      const [p1, p2] = await Promise.all([searchByGenre(genreFilter, 1), searchByGenre(genreFilter, 2)]);
-      initial = [...(p1.Search || []), ...(p2.Search || [])];
-    } else {
-      const seedYear = yearFrom ? parseInt(yearFrom) : undefined;
-      const [p1, p2] = await Promise.all([
+    if (fields.title) {
+      seedPromises.push(searchMovies(fields.title, 1, seedYear));
+      seedPromises.push(searchMovies(fields.title, 2, seedYear));
+    }
+    if (fields.actor) {
+      seedPromises.push(searchMovies(fields.actor, 1, seedYear));
+      seedPromises.push(searchMovies(fields.actor, 2, seedYear));
+    }
+    if (fields.director) {
+      seedPromises.push(searchMovies(fields.director, 1, seedYear));
+      seedPromises.push(searchMovies(fields.director, 2, seedYear));
+    }
+    if (fields.genre) {
+      seedPromises.push(searchByGenre(fields.genre, 1));
+      seedPromises.push(searchByGenre(fields.genre, 2));
+      seedPromises.push(searchByGenre(fields.genre, 3));
+    }
+
+    if (seedPromises.length === 0) {
+      // Filter-only search (year/rating)
+      seedPromises.push(
         searchMovies("movie", 1, seedYear),
         searchMovies("the", 1, seedYear),
-      ]);
-      initial = [...(p1.Search || []), ...(p2.Search || [])];
+      );
     }
+
+    const seedResults = await Promise.all(seedPromises);
+    let initial: Movie[] = seedResults.flatMap((r) => r.Search || []);
 
     // De-dupe
     initial = Array.from(new Map(initial.map((m) => [m.imdbID, m])).values());
 
-    // For person searches we need a bigger hydration pool because most
-    // candidates won't actually feature the person.
     const limit = Math.min(parseInt(resultLimit) || 20, 50);
-    const hydrationCap =
-      hasQuery && (searchField === "actor" || searchField === "director")
-        ? Math.min(initial.length, 60)
-        : limit;
+    // Hydrate more candidates when person/genre matching is needed
+    const needsHydration = !!(fields.actor || fields.director || fields.genre);
+    const hydrationCap = needsHydration ? Math.min(initial.length, 60) : Math.min(initial.length, limit * 2);
     initial = initial.slice(0, hydrationCap);
 
-    // Hydrate with full details for filtering
     const detailed = await Promise.all(
       initial.map(async (m) => {
         const full = await getMovieById(m.imdbID);
@@ -106,19 +92,24 @@ export default function SearchPage() {
       })
     );
 
-    // Apply field-specific matching only when there's a query
-    const q = query.toLowerCase();
-    let fieldFiltered = hasQuery
+    // OR matching: a movie matches if ANY filled field matches it
+    const matchers = {
+      title: fields.title.toLowerCase(),
+      actor: fields.actor.toLowerCase(),
+      director: fields.director.toLowerCase(),
+      genre: fields.genre.toLowerCase(),
+    };
+
+    let fieldFiltered = hasAnyQuery
       ? detailed.filter((m) => {
-          if (searchField === "title") return m.Title?.toLowerCase().includes(q);
-          if (searchField === "actor") return m.Actors?.toLowerCase().includes(q);
-          if (searchField === "director") return m.Director?.toLowerCase().includes(q);
-          if (searchField === "genre") return m.Genre?.toLowerCase().includes(q);
-          return true;
+          if (matchers.title && m.Title?.toLowerCase().includes(matchers.title)) return true;
+          if (matchers.actor && m.Actors?.toLowerCase().includes(matchers.actor)) return true;
+          if (matchers.director && m.Director?.toLowerCase().includes(matchers.director)) return true;
+          if (matchers.genre && m.Genre?.toLowerCase().includes(matchers.genre)) return true;
+          return false;
         })
       : detailed;
 
-    // Cap final results to the requested limit
     fieldFiltered = fieldFiltered.slice(0, limit);
 
     setResults(fieldFiltered);
@@ -126,7 +117,6 @@ export default function SearchPage() {
   };
 
   const filteredResults = results.filter((m) => {
-    if (genreFilter !== "all" && !m.Genre?.toLowerCase().includes(genreFilter.toLowerCase())) return false;
     const year = parseInt(m.Year?.slice(0, 4) || "0");
     if (yearFrom && year < parseInt(yearFrom)) return false;
     if (yearTo && year > parseInt(yearTo)) return false;
@@ -137,68 +127,93 @@ export default function SearchPage() {
     return true;
   });
 
-  const clearFilters = () => {
-    setGenreFilter("all");
+  const clearAll = () => {
+    setTitleQuery("");
+    setActorQuery("");
+    setDirectorQuery("");
+    setGenreQuery("");
     setYearFrom("");
     setYearTo("");
     setMinRating("");
     setResultLimit("20");
   };
 
+  const hasAnyInput =
+    titleQuery || actorQuery || directorQuery || genreQuery || yearFrom || yearTo || minRating;
+
   return (
     <div className="pt-20 pb-10 container space-y-6">
-      <h1 className="text-3xl font-display font-bold text-foreground">Search Movies</h1>
-
-      <div className="flex flex-col sm:flex-row gap-2">
-        <Select value={searchField} onValueChange={setSearchField}>
-          <SelectTrigger className="w-full sm:w-36 bg-secondary border-border">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SEARCH_FIELDS.map((f) => (
-              <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder={`Search by ${searchField}...`}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          className="bg-secondary border-border flex-1"
-        />
-        <Button onClick={handleSearch} className="bg-primary text-primary-foreground hover:opacity-90">
-          <Search size={18} />
-        </Button>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-display font-bold text-foreground">Search Movies</h1>
         <Button variant="outline" onClick={() => setShowFilters((s) => !s)} className="border-border">
-          <SlidersHorizontal size={18} />
+          <SlidersHorizontal size={18} className="mr-2" /> Filters
         </Button>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Fill any of the fields below — results match if <span className="text-foreground font-medium">any</span> filled field matches.
+      </p>
+
+      <div className="rounded-lg border border-border bg-secondary/40 p-4 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Title</Label>
+            <Input
+              placeholder="e.g. Inception"
+              value={titleQuery}
+              onChange={(e) => setTitleQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="bg-background border-border"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Actor</Label>
+            <Input
+              placeholder="e.g. Tom Hanks"
+              value={actorQuery}
+              onChange={(e) => setActorQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="bg-background border-border"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Director</Label>
+            <Input
+              placeholder="e.g. Christopher Nolan"
+              value={directorQuery}
+              onChange={(e) => setDirectorQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="bg-background border-border"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Genre</Label>
+            <Input
+              placeholder="e.g. Sci-Fi"
+              value={genreQuery}
+              onChange={(e) => setGenreQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="bg-background border-border"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={handleSearch} className="bg-primary text-primary-foreground hover:opacity-90 flex-1 sm:flex-none">
+            <Search size={18} className="mr-2" /> Search
+          </Button>
+          {hasAnyInput && (
+            <Button variant="ghost" onClick={clearAll} className="text-muted-foreground">
+              <X size={14} className="mr-1" /> Clear all
+            </Button>
+          )}
+        </div>
       </div>
 
       {showFilters && (
         <div className="rounded-lg border border-border bg-secondary/40 p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display font-semibold text-foreground">Filters</h3>
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
-              <X size={14} className="mr-1" /> Clear
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Genre</Label>
-              <Select value={genreFilter} onValueChange={setGenreFilter}>
-                <SelectTrigger className="bg-background border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All genres</SelectItem>
-                  {GENRES.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
+          <h3 className="font-display font-semibold text-foreground">Additional filters</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Year range</Label>
               <div className="flex gap-2">
@@ -270,8 +285,8 @@ export default function SearchPage() {
         </>
       )}
 
-      {!loading && results.length === 0 && (query || genreFilter !== "all" || yearFrom || yearTo || minRating) && (
-        <p className="text-center text-muted-foreground py-10">No movies found. Try different filters or a search term.</p>
+      {!loading && results.length === 0 && hasAnyInput && (
+        <p className="text-center text-muted-foreground py-10">No movies found. Try different fields or filters.</p>
       )}
       {!loading && results.length > 0 && filteredResults.length === 0 && (
         <p className="text-center text-muted-foreground py-10">No results match your filters.</p>
