@@ -26,9 +26,16 @@ function AppRoutes() {
   return (
     <>
       <AppNav />
-      <WatchLaterPrompt />
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/"
+          element={
+            <>
+              <WatchLaterPrompt />
+              <HomePage />
+            </>
+          }
+        />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/movie/:id" element={<MovieDetailPage />} />
         <Route path="/watch-later" element={<WatchLaterPage />} />
