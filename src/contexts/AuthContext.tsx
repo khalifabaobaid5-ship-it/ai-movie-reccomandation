@@ -2,8 +2,10 @@ import React, { createContext, useContext, useState, useCallback, ReactNode } fr
 import {
   UserProfile,
   getUser,
-  saveUser,
   logout as doLogout,
+  signIn as doSignIn,
+  signUp as doSignUp,
+  AuthResult,
   addToWatchHistory,
   rateMovie,
   updateFavoriteGenres,
@@ -15,7 +17,8 @@ import {
 
 interface AuthContextType {
   user: UserProfile | null;
-  login: (username: string, genres: string[]) => void;
+  signIn: (username: string, password: string) => AuthResult;
+  signUp: (username: string, password: string, genres: string[]) => AuthResult;
   logout: () => void;
   addWatch: (item: Omit<WatchHistoryItem, "watchedAt">) => void;
   rate: (imdbID: string, score: number, review: string) => void;
@@ -29,16 +32,16 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(getUser);
 
-  const login = useCallback((username: string, genres: string[]) => {
-    const profile: UserProfile = {
-      username,
-      favoriteGenres: genres,
-      ratings: {},
-      watchHistory: [],
-      watchLater: [],
-    };
-    saveUser(profile);
-    setUser(profile);
+  const signIn = useCallback((username: string, password: string): AuthResult => {
+    const result = doSignIn(username, password);
+    if (result.ok) setUser(result.profile);
+    return result;
+  }, []);
+
+  const signUp = useCallback((username: string, password: string, genres: string[]): AuthResult => {
+    const result = doSignUp(username, password, genres);
+    if (result.ok) setUser(result.profile);
+    return result;
   }, []);
 
   const logout = useCallback(() => {
@@ -68,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, addWatch, rate, setGenres, addWatchLater, removeWatchLater }}
+      value={{ user, signIn, signUp, logout, addWatch, rate, setGenres, addWatchLater, removeWatchLater }}
     >
       {children}
     </AuthContext.Provider>
