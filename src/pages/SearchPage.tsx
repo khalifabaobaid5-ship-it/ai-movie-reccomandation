@@ -145,6 +145,7 @@ export default function SearchPage() {
     setYearTo("");
     setMinRating("");
     setResultLimit("20");
+    setResults([]);
   };
 
   const hasAnyInput =
