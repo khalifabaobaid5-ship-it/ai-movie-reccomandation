@@ -101,7 +101,7 @@ export default function SearchPage() {
     // OR matching: a movie matches if ANY filled field matches it
     const matchers = {
       title: fields.title.toLowerCase(),
-      actor: fields.actor.toLowerCase(),
+      actors: actorList.map((a) => a.toLowerCase()),
       director: fields.director.toLowerCase(),
       genre: fields.genre.toLowerCase(),
     };
@@ -109,7 +109,10 @@ export default function SearchPage() {
     let fieldFiltered = hasAnyQuery
       ? detailed.filter((m) => {
           if (matchers.title && m.Title?.toLowerCase().includes(matchers.title)) return true;
-          if (matchers.actor && m.Actors?.toLowerCase().includes(matchers.actor)) return true;
+          if (matchers.actors.length > 0) {
+            const a = m.Actors?.toLowerCase() || "";
+            if (matchers.actors.some((name) => a.includes(name))) return true;
+          }
           if (matchers.director && m.Director?.toLowerCase().includes(matchers.director)) return true;
           if (matchers.genre && m.Genre?.toLowerCase().includes(matchers.genre)) return true;
           return false;
