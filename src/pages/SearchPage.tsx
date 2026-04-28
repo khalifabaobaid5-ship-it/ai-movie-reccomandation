@@ -180,7 +180,7 @@ export default function SearchPage() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Fill any of the fields below — results match if <span className="text-foreground font-medium">any</span> filled field matches.
+        Fill any of the fields below — results must match <span className="text-foreground font-medium">all</span> filled fields (actors checked against cast, director against director, etc.).
       </p>
 
       <div className="rounded-lg border border-border bg-secondary/40 p-4 space-y-4">
