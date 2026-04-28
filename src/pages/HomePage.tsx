@@ -2,11 +2,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchByGenre, searchByYear, Movie } from "@/lib/omdb";
 import { MovieCard } from "@/components/MovieCard";
-import { Sparkles, TrendingUp, CalendarClock } from "lucide-react";
+import { TrendingUp, CalendarClock } from "lucide-react";
 
 export default function HomePage() {
   const { user } = useAuth();
-  const [recommendations, setRecommendations] = useState<Movie[]>([]);
   const [trending, setTrending] = useState<Movie[]>([]);
   const [latest, setLatest] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
