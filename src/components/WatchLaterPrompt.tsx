@@ -10,7 +10,7 @@ import { toast } from "sonner";
 const SESSION_FLAG = "cineai_watchlater_prompted";
 
 export function WatchLaterPrompt() {
-  const { user, rate, addWatch } = useAuth();
+  const { user, rate, addWatch, removeWatchLater } = useAuth();
   const [open, setOpen] = useState(false);
   const [queue, setQueue] = useState<WatchLaterItem[]>([]);
   const [index, setIndex] = useState(0);
@@ -55,7 +55,7 @@ export function WatchLaterPrompt() {
   };
 
   const handleWatched = () => {
-    // Record in watch history, then ask for a rating
+    // Record in watch history, remove from watch later, then ask for a rating
     addWatch({
       imdbID: current.imdbID,
       title: current.title,
@@ -63,6 +63,8 @@ export function WatchLaterPrompt() {
       genre: current.genre || "",
       year: current.year,
     });
+    removeWatchLater(current.imdbID);
+    toast.success(`Removed "${current.title}" from Watch Later`);
     setShowRating(true);
   };
 

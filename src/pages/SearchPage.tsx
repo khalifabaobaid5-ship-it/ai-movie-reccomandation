@@ -56,14 +56,24 @@ export default function SearchPage() {
       .map((a) => a.trim())
       .filter((a) => a.length > 0);
     if (actorList.length > 0) {
+      // Seed by actor name — many actor names also appear in titles, but
+      // we also pull broad pools so we have candidates whose CAST matches.
       actorList.forEach((name) => {
         seedPromises.push(searchMovies(name, 1, seedYear));
         seedPromises.push(searchMovies(name, 2, seedYear));
       });
     }
     if (fields.director) {
+      // Director names rarely appear in movie titles, so a title-search for
+      // "Christopher Nolan" returns nothing. Seed with broad popular terms
+      // and then filter by Director field after hydrating details.
+      const broadTerms = ["movie", "the", "love", "man", "war", "night", "day"];
+      broadTerms.forEach((t, i) => {
+        seedPromises.push(searchMovies(t, 1, seedYear));
+        if (i < 3) seedPromises.push(searchMovies(t, 2, seedYear));
+      });
+      // Also try the director name itself just in case
       seedPromises.push(searchMovies(fields.director, 1, seedYear));
-      seedPromises.push(searchMovies(fields.director, 2, seedYear));
     }
     if (fields.genre) {
       seedPromises.push(searchByGenre(fields.genre, 1));
@@ -88,7 +98,7 @@ export default function SearchPage() {
     const limit = Math.min(parseInt(resultLimit) || 20, 50);
     // Hydrate more candidates when person/genre matching is needed
     const needsHydration = !!(fields.actor || fields.director || fields.genre);
-    const hydrationCap = needsHydration ? Math.min(initial.length, 60) : Math.min(initial.length, limit * 2);
+    const hydrationCap = needsHydration ? Math.min(initial.length, 120) : Math.min(initial.length, limit * 2);
     initial = initial.slice(0, hydrationCap);
 
     const detailed = await Promise.all(
@@ -98,7 +108,9 @@ export default function SearchPage() {
       })
     );
 
-    // OR matching: a movie matches if ANY filled field matches it
+    // STRICT per-field matching: every filled field must match the
+    // corresponding movie field. Actor must be in CAST (not title),
+    // director must be in DIRECTOR, genre must be in GENRE, etc.
     const matchers = {
       title: fields.title.toLowerCase(),
       actors: actorList.map((a) => a.toLowerCase()),
@@ -108,16 +120,23 @@ export default function SearchPage() {
 
     let fieldFiltered = hasAnyQuery
       ? detailed.filter((m) => {
-          if (matchers.title && m.Title?.toLowerCase().includes(matchers.title)) return true;
+          if (matchers.title && !m.Title?.toLowerCase().includes(matchers.title)) return false;
           if (matchers.actors.length > 0) {
             const a = m.Actors?.toLowerCase() || "";
-            if (matchers.actors.some((name) => a.includes(name))) return true;
+            if (!matchers.actors.some((name) => a.includes(name))) return false;
           }
-          if (matchers.director && m.Director?.toLowerCase().includes(matchers.director)) return true;
-          if (matchers.genre && m.Genre?.toLowerCase().includes(matchers.genre)) return true;
-          return false;
+          if (matchers.director && !m.Director?.toLowerCase().includes(matchers.director)) return false;
+          if (matchers.genre && !m.Genre?.toLowerCase().includes(matchers.genre)) return false;
+          return true;
         })
       : detailed;
+
+    // Prefer movies with posters
+    fieldFiltered = fieldFiltered.sort((a, b) => {
+      const aHas = a.Poster && a.Poster !== "N/A" ? 0 : 1;
+      const bHas = b.Poster && b.Poster !== "N/A" ? 0 : 1;
+      return aHas - bHas;
+    });
 
     fieldFiltered = fieldFiltered.slice(0, limit);
 
@@ -161,7 +180,7 @@ export default function SearchPage() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Fill any of the fields below — results match if <span className="text-foreground font-medium">any</span> filled field matches.
+        Fill any of the fields below — results must match <span className="text-foreground font-medium">all</span> filled fields (actors checked against cast, director against director, etc.).
       </p>
 
       <div className="rounded-lg border border-border bg-secondary/40 p-4 space-y-4">

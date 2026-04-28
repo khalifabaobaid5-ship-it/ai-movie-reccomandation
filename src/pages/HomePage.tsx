@@ -2,11 +2,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchByGenre, searchByYear, Movie } from "@/lib/omdb";
 import { MovieCard } from "@/components/MovieCard";
-import { Sparkles, TrendingUp, CalendarClock } from "lucide-react";
+import { TrendingUp, CalendarClock } from "lucide-react";
 
 export default function HomePage() {
   const { user } = useAuth();
-  const [recommendations, setRecommendations] = useState<Movie[]>([]);
   const [trending, setTrending] = useState<Movie[]>([]);
   const [latest, setLatest] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,22 +15,6 @@ export default function HomePage() {
     const load = async () => {
       setLoading(true);
       try {
-        // Recommendations: pull from up to 5 favorite genres, 2 pages each
-        const genreResults = await Promise.all(
-          user.favoriteGenres.slice(0, 5).flatMap((g) => [
-            searchByGenre(g, 1),
-            searchByGenre(g, 2),
-          ])
-        );
-        const allRecs = genreResults.flatMap((r) => r.Search || []);
-        const uniqueRecs = Array.from(new Map(allRecs.map((m) => [m.imdbID, m])).values());
-        // Prefer movies that have a poster image
-        const sortedRecs = uniqueRecs.sort((a, b) => {
-          const aHas = a.Poster && a.Poster !== "N/A" ? 0 : 1;
-          const bHas = b.Poster && b.Poster !== "N/A" ? 0 : 1;
-          return aHas - bHas;
-        });
-        setRecommendations(sortedRecs.slice(0, 20));
 
         // Trending: combine multiple popular genres for variety
         const trendingGenres = ["Adventure", "Action", "Drama"];
@@ -75,27 +58,6 @@ export default function HomePage() {
 
   return (
     <div className="pt-20 pb-10 container space-y-10">
-      {/* Recommendations */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="text-primary" size={22} />
-          <h2 className="text-2xl font-display font-bold text-foreground">Recommended For You</h2>
-        </div>
-        <p className="text-sm text-muted-foreground">Based on your favorite genres: {user.favoriteGenres.join(", ")}</p>
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className="aspect-[2/3] bg-secondary rounded-lg animate-pulse" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            {recommendations.map((m) => (
-              <MovieCard key={m.imdbID} movie={m} userRating={user.ratings[m.imdbID]?.score} />
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* Latest Releases */}
       <section className="space-y-4">
