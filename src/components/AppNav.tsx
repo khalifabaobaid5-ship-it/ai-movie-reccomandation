@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, Film, Star, LogOut, User, Bookmark } from "lucide-react";
+import { Search, Film, Star, LogOut, User, Bookmark, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", icon: Film, label: "Home" },
+  { to: "/recommendations", icon: Sparkles, label: "For You" },
   { to: "/search", icon: Search, label: "Search" },
   { to: "/watch-later", icon: Bookmark, label: "Watch Later" },
   { to: "/ratings", icon: Star, label: "My Ratings" },

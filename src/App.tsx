@@ -10,6 +10,7 @@ import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import SearchPage from "@/pages/SearchPage";
 import MovieDetailPage from "@/pages/MovieDetailPage";
+import RecommendationsPage from "@/pages/RecommendationsPage";
 
 import RatingsPage from "@/pages/RatingsPage";
 import ProfilePage from "@/pages/ProfilePage";
@@ -37,6 +38,7 @@ function AppRoutes() {
           }
         />
         <Route path="/search" element={<SearchPage />} />
+        <Route path="/recommendations" element={<RecommendationsPage />} />
         <Route path="/movie/:id" element={<MovieDetailPage />} />
         <Route path="/watch-later" element={<WatchLaterPage />} />
         <Route path="/ratings" element={<RatingsPage />} />
